@@ -331,6 +331,32 @@ table.fab td:nth-child(2) { width: 20%; font-weight: 600; }
 .card:has(.cut-table) { overflow-x: auto; }
 .need-list { padding-left: 18px; margin: 0 0 8px; font-size: 13px; display: grid; gap: 5px; }
 
+/* ---------- Egyedi színek, exportmenü ---------- */
+.with-color { display: flex; gap: 8px; align-items: center; }
+.with-color select { flex: 1; min-width: 0; }
+.extra-item { display: flex; gap: 6px; align-items: stretch; }
+.extra-item button { flex: 1; min-width: 0; }
+.extra-item .ec-input { width: 38px; height: auto; min-height: 38px; flex: none; }
+.toggle-grid { grid-template-columns: 1fr; }
+.export-menu {
+  position: absolute; right: 48px; top: 0; z-index: 5; display: flex; flex-direction: column; min-width: 220px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 6px;
+}
+.export-menu[hidden] { display: none; }
+.export-menu button { text-align: left; border: 0; background: none; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-weight: 500; }
+.export-menu button:hover, .export-menu button:focus-visible { background: var(--accent-soft); color: var(--accent); }
+.stage-side { align-items: flex-end; }
+.ti { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vertical-align: -4px; margin-right: 5px; }
+.sew-cta p { margin: 0 0 4px; }
+.sew-cta .btn.wide { margin-top: 6px; }
+
+/* egységes vezérlőméretek */
+.btn, select, .name-input { min-height: 38px; }
+.btn.small { min-height: 32px; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#stage, #figureHost, #sketchCanvas, .mm-canvas-wrap { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+button { -webkit-tap-highlight-color: transparent; }
+
 /* ---------- Toast ---------- */
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
@@ -389,3 +415,61 @@ table.fab td:nth-child(2) { width: 20%; font-weight: 600; }
   .print-notes { display: block; }
   .sheet-body { grid-template-columns: 260px 1fr; }
 }
+
+/* ---------- Telefon (iPhone / Android) ---------- */
+@media (max-width: 760px) {
+  body { padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
+  input, select, textarea, .name-input { font-size: 16px; } /* iOS ne nagyítson rá */
+  .topbar {
+    flex-wrap: nowrap; gap: 8px; top: 0;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
+  }
+  .brand > div { display: none; }
+  .top-actions { flex: 1; margin-left: 0; }
+  .name-input { flex: 1; width: auto; min-width: 0; }
+  /* alsó menüsor */
+  .tabs {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; margin: 0; width: auto; order: 0;
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; border-radius: 0; border: 0; border-top: 1px solid var(--line);
+    background: var(--panel); padding: 4px max(4px, env(safe-area-inset-right, 0px)) calc(4px + env(safe-area-inset-bottom, 0px)) max(4px, env(safe-area-inset-left, 0px));
+    box-shadow: 0 -4px 16px rgba(0,0,0,.06); overflow: visible;
+  }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; border-radius: 10px; font-size: 10.5px; position: relative; }
+  .tab .ti { width: 22px; height: 22px; margin: 0; }
+  .tab.active { background: var(--accent-soft); color: var(--accent); }
+  .tab .badge { position: absolute; top: 2px; right: 12%; background: var(--accent); color: #fff; }
+  .tab.active .badge { background: var(--accent); }
+
+  #view-designer.active, #view-group.active, #view-gallery.active, #view-sheet.active, #view-sewing.active {
+    padding: 10px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px));
+  }
+  #view-designer.active { gap: 10px; }
+  .toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px; }
+  .tool-group { min-width: 0; flex-direction: column; align-items: stretch; gap: 2px; }
+  .tool-group select { width: 100%; min-width: 0; }
+  #motionSeg { grid-column: 1 / -1; flex-direction: row; order: 10; }
+  .tool-label { font-size: 11px; }
+  .toolbar select { min-height: 36px; padding: 5px 8px; }
+  .stage { height: 62svh; min-height: 380px; padding: 6px; }
+  .stage-side { right: 8px; top: 8px; }
+  .export-menu { right: 46px; }
+  .panel.left { padding: 10px 12px 16px; overflow: visible; }
+  #sectionTabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; top: calc(54px + env(safe-area-inset-top, 0px)); }
+  #sectionTabs::-webkit-scrollbar { display: none; }
+  #sectionTabs button { flex: 0 0 auto; padding: 8px 12px; }
+  .bottom-grid, .pattern-grid, .motif-lib { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .chips button { padding: 7px 12px; }
+  .sketch-tools { bottom: 8px; }
+  .group-controls { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  .group-controls label { justify-content: space-between; }
+  .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .g-actions { flex-wrap: wrap; }
+  .sheet-actions { flex-wrap: wrap; }
+  .modal { padding: 0; align-items: stretch; }
+  .modal-box { width: 100%; max-height: none; height: 100%; border-radius: 0; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+  .toast { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 32px); text-align: center; }
+  .measure-grid { grid-template-columns: 1fr 92px; }
+  .sew-sheet svg { min-width: 0; }
+}
+
+.badge:empty, .badge[data-zero] { display: none; }

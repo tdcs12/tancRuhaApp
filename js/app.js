@@ -165,7 +165,17 @@
     harm();
 
     // kiegészítők
-    $('#extrasGrid').innerHTML = Object.keys(D.extras).map(k => `<button type="button" data-val="${k}">${U.esc(D.extras[k])}</button>`).join('');
+    $('#extrasGrid').innerHTML = Object.keys(D.extras).map(k => `<div class="extra-item"><button type="button" data-val="${k}">${U.esc(D.extras[k])}</button>` +
+      (k === 'flitter' ? '' : `<input type="color" class="ec-input" data-ec="${k}" aria-label="${U.esc(D.extras[k])} színe" title="Szín">`) + '</div>').join('');
+    // kiegészítők és részlet egyedi színe
+    document.addEventListener('input', e => {
+      const k = e.target.dataset && e.target.dataset.ec; if (!k) return;
+      if (!state.design.extraColors) state.design.extraColors = {};
+      state.design.extraColors[k] = e.target.value;
+      if (k !== 'detail' && !state.design.extras[k]) state.design.extras[k] = true;
+      changed({ immediate: false, skipThumbs: true });
+    });
+    $$('[data-goto]').forEach(b => b.addEventListener('click', () => { showView(b.dataset.goto); window.scrollTo(0, 0); }));
     $('#extrasGrid').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
       state.design.extras[b.dataset.val] = !state.design.extras[b.dataset.val]; changed();
@@ -215,8 +225,14 @@
     $('#undoBtn').addEventListener('click', undo);
     $('#redoBtn').addEventListener('click', redo);
     $('#saveBtn').addEventListener('click', saveToGallery);
-    $('#pngBtn').addEventListener('click', exportPNG);
-    $('#svgBtn').addEventListener('click', exportSVG);
+    const menu = $('#exportMenu');
+    $('#exportBtn').addEventListener('click', e => { e.stopPropagation(); menu.hidden = !menu.hidden; $('#exportBtn').setAttribute('aria-expanded', String(!menu.hidden)); });
+    document.addEventListener('click', e => { if (!menu.hidden && !e.target.closest('#exportMenu')) menu.hidden = true; });
+    menu.addEventListener('click', e => {
+      const b = e.target.closest('[data-exp]'); if (!b) return;
+      menu.hidden = true;
+      if (b.dataset.exp === 'svg') exportSVG(); else exportPNG(b.dataset.exp === 'png-clear');
+    });
     $('#sketchBtn').addEventListener('click', () => {
       state.sketchMode = !state.sketchMode;
       $('#sketchBtn').classList.toggle('active', state.sketchMode);
@@ -319,6 +335,7 @@
     $$('[data-chips="top.sleeve"] button').forEach(b => b.classList.toggle('disabled', noSleeve && b.dataset.val !== 'nincs'));
     $$('#bottomGrid button').forEach(b => b.classList.toggle('active', b.dataset.val === d.bottom.type));
     $$('#extrasGrid button').forEach(b => b.classList.toggle('active', !!d.extras[b.dataset.val]));
+    $$('.ec-input').forEach(inp => { if (document.activeElement !== inp) inp.value = (d.extraColors || {})[inp.dataset.ec] || d.accent.fill.colors[0]; });
     $$('#skinRow button').forEach(b => b.classList.toggle('active', b.dataset.val === d.figure.skin));
     $$('#zoneTabs button').forEach(b => b.classList.toggle('active', b.dataset.zone === state.zone));
     const zf = zoneFill();
@@ -465,7 +482,7 @@
   /* ---------- Galéria ---------- */
   function persistGallery() {
     if (!store.set('tancruha.gallery', state.gallery)) toast('A böngésző tárhelye megtelt – exportáld a terveket JSON-ba.');
-    $('#galleryCount').textContent = state.gallery.length;
+    $('#galleryCount').textContent = state.gallery.length || '';
   }
   function saveToGallery() {
     const d = U.clone(state.design);
@@ -481,7 +498,7 @@
     if (state.activeView === 'gallery') renderGallery();
   }
   function renderGallery() {
-    $('#galleryCount').textContent = state.gallery.length;
+    $('#galleryCount').textContent = state.gallery.length || '';
     $('#galleryEmpty').hidden = state.gallery.length > 0;
     $('#galleryGrid').innerHTML = state.gallery.map((g, i) => {
       const v = Object.assign({ pose: 'alap', bg: 'studio', light: 'feher', style: 'tiszta' }, g.view || {});
@@ -590,24 +607,33 @@
   }
 
   /* ---------- Export ---------- */
-  function download(name, blob) {
+  /* Telefonon (iPhone/Android) a megosztás ablakkal menthető a Fotókba / Fájlokba; máshol letöltés */
+  async function download(name, blob) {
+    const touch = matchMedia('(pointer: coarse)').matches;
+    if (touch && navigator.canShare && window.File) {
+      try {
+        const file = new File([blob], name, { type: blob.type });
+        if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
+      } catch (err) { if (err && err.name === 'AbortError') return; }
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }
   const fileBase = () => (state.design.name || 'tancruha').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'tancruha';
-  function currentSVG() {
+  function currentSVG(transparent) {
     const m = motionAt(lastT, state.view.motion);
-    return R.svg(state.design, state.view, { idp: 'exp', poseData: m.pose, motion: m.motion });
+    const view = transparent ? Object.assign({}, state.view, { light: 'feher' }) : state.view;
+    return R.svg(state.design, view, { idp: 'exp', poseData: m.pose, motion: m.motion, noBg: !!transparent });
   }
   function exportSVG() {
     let s = currentSVG();
     if (state.design.sketch) s = s.replace('</svg>', `<image href="${state.design.sketch}" x="0" y="0" width="400" height="760"/></svg>`);
     download(fileBase() + '.svg', new Blob([s], { type: 'image/svg+xml' }));
   }
-  function exportPNG() {
-    const s = currentSVG();
+  function exportPNG(transparent) {
+    const s = currentSVG(transparent);
     const img = new Image();
     const url = URL.createObjectURL(new Blob([s], { type: 'image/svg+xml' }));
     img.onload = () => {
@@ -615,10 +641,26 @@
       const ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0, 800, 1520);
       ctx.drawImage($('#sketchCanvas'), 0, 0, 800, 1520);
       URL.revokeObjectURL(url);
-      cv.toBlob(b => { if (b) download(fileBase() + '.png', b); else toast('A PNG mentése nem sikerült'); }, 'image/png');
+      const out = transparent ? cropTransparent(cv) : cv;
+      out.toBlob(b => { if (b) download(fileBase() + (transparent ? '-atlatszo' : '') + '.png', b); else toast('A PNG mentése nem sikerült'); }, 'image/png');
     };
     img.onerror = () => { URL.revokeObjectURL(url); toast('A PNG mentése nem sikerült'); };
     img.src = url;
+  }
+
+  /* Az átlátszó kép levágása a ruha körüli üres részig */
+  function cropTransparent(cv) {
+    const ctx = cv.getContext('2d'), { width: W, height: H } = cv;
+    const data = ctx.getImageData(0, 0, W, H).data;
+    let x0 = W, y0 = H, x1 = -1, y1 = -1;
+    for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) {
+      if (data[(y * W + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    if (x1 < 0) return cv;
+    const pad = 16; x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(W, x1 + pad); y1 = Math.min(H, y1 + pad);
+    const out = document.createElement('canvas'); out.width = x1 - x0; out.height = y1 - y0;
+    out.getContext('2d').drawImage(cv, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+    return out;
   }
 
   /* ---------- Nézetváltás ---------- */
@@ -872,6 +914,19 @@
       download(fileBase() + '-szabasminta.svg', new Blob([r.svg], { type: 'image/svg+xml' }));
     });
     $('#sewPrintBtn').addEventListener('click', () => window.print());
+    $('#sewPngBtn').addEventListener('click', () => {
+      const r = SW.sheet(state.design, measures());
+      const k = 10; // 10 képpont / cm
+      const img = new Image();
+      const url = URL.createObjectURL(new Blob([r.svg.replace('width="100%"', `width="${r.width * k}" height="${r.height * k}"`)], { type: 'image/svg+xml' }));
+      img.onload = () => {
+        const cv = document.createElement('canvas'); cv.width = Math.round(r.width * k); cv.height = Math.round(r.height * k);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url);
+        cv.toBlob(b => { if (b) download(fileBase() + '-szabasminta.png', b); }, 'image/png');
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); toast('A kép mentése nem sikerült'); };
+      img.src = url;
+    });
   }
   function afterMeasure() {
     store.set('tancruha.measures', measures());
@@ -904,7 +959,7 @@
   renderFigure();
   updateAnalysis();
   updateUndo();
-  $('#galleryCount').textContent = state.gallery.length;
+  $('#galleryCount').textContent = state.gallery.length || '';
   $('#insStyle').value = 'kortars'; $('#insMood').value = 'misztikus';
   rafId = requestAnimationFrame(loop);
   window.TRApp = { state, renderFigure, showView };

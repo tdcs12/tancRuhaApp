@@ -363,6 +363,8 @@ TR.render = (() => {
     const bottomFill = b.matchTop ? top.fill : b.fill;
     const bottomRef = b.matchTop ? topRef : mk('bot', bottomFill);
     const accRef = mk('acc', d.accent.fill);
+    const ec = d.extraColors || {};
+    const acc = k => ec[k] || accRef;
     const bottomFabric = b.matchTop ? top.fabric : b.fabric;
     const bInfo = D.bottoms[b.type] || D.bottoms.nincs;
     const sway = (D.fabrics[bottomFabric] || D.fabrics.jersey).sway;
@@ -389,7 +391,7 @@ TR.render = (() => {
         'Q' + pt([200 + sw, 640 - spin * 70 - sk.oy * 0.3]) + ' ' + pt(hr) +
         'Q' + pt([hr[0] + 10, lerp(B.w[1], hr[1], 0.5)]) + ' ' + pt(B.w) +
         'L' + pt(B.e) + 'L' + pt(B.s) + 'L210 120Z';
-      parts.push(garment([cape], accRef, 'sifon', { p, opacity: 0.85 }));
+      parts.push(garment([cape], acc('kopeny'), 'sifon', { p, opacity: 0.85 }));
     }
 
     // 2. lábak, törzs, nadrág
@@ -414,7 +416,7 @@ TR.render = (() => {
         maskAttr = ` mask="url(#${p}-slit)"`;
       }
       let ruffle = '';
-      if (x.fodor && sk2.hem.length) ruffle = ruffleShape(sk2.hem, accRef);
+      if (x.fodor && sk2.hem.length) ruffle = ruffleShape(sk2.hem, acc('fodor'));
       const body = sk2.separate
         ? sk2.ds.map((dd, i) => garment([dd], bottomRef, bottomFabric, { p, extra: i === sk2.ds.length - 1 ? extra : '' })).join('')
         : garment(sk2.ds, bottomRef, bottomFabric, { p, extra });
@@ -425,7 +427,7 @@ TR.render = (() => {
     // 5. felsőrész (ujjak nélkül)
     const bodice = bodicePath(top);
     defs.push(`<clipPath id="${p}-topclip"><path d="${bodice}"/></clipPath>`);
-    const det = topDetail(top, p, accRef, skin, sk, phase);
+    const det = topDetail(top, p, acc('detail'), skin, sk, phase);
     parts.push(garment([bodice], topRef, top.fabric, { p, sequins: x.flitter, extra: det ? `<g clip-path="url(#${p}-topclip)">${det}</g>` : '' }));
     const topM = M.layer(d, 'top', p);
     if (topM) parts.push(`<g clip-path="url(#${p}-topclip)">${topM}</g>`);
@@ -445,14 +447,14 @@ TR.render = (() => {
         const ang = Math.sin(phase * 1.5 + xx * 0.05) * (0.15 + spin * 0.6) * (xx < 200 ? -1 : 1) + (xx - 200) / 200 * spin * 1.2;
         fr += `M${f(xx)} ${f(y0)}l${f(Math.sin(ang) * len)} ${f(Math.cos(ang) * len)}`;
       }
-      parts.push(`<path d="${fr}" stroke="${OUTLINE}" stroke-width="2.6" stroke-linecap="round" opacity=".6"/><path d="${fr}" stroke="${accRef}" stroke-width="1.6" stroke-linecap="round"/>`);
+      parts.push(`<path d="${fr}" stroke="${OUTLINE}" stroke-width="2.6" stroke-linecap="round" opacity=".6"/><path d="${fr}" stroke="${acc('rojt')}" stroke-width="1.6" stroke-linecap="round"/>`);
     }
 
     // öv
     if (x.ov) {
       const by = bInfo.kind !== 'none' ? wy : 232;
       const belt = `M${f(xL(by - 7) - 2)} ${by - 7}L${f(xR(by - 7) + 2)} ${by - 7}L${f(xR(by + 7) + 2)} ${by + 7}Q200 ${by + 10} ${f(xL(by + 7) - 2)} ${by + 7}Z`;
-      parts.push(garment([belt], accRef, 'szatén', { p, extra: `<rect x="193" y="${by - 8}" width="14" height="16" rx="3" fill="none" stroke="${OUTLINE}" stroke-width="2"/>` }));
+      parts.push(garment([belt], acc('ov'), 'szatén', { p, extra: `<rect x="193" y="${by - 8}" width="14" height="16" rx="3" fill="none" stroke="${OUTLINE}" stroke-width="2"/>` }));
     }
 
     // lobogó szalag
@@ -464,8 +466,8 @@ TR.render = (() => {
         pts.push([xR(by) + 4 + i * (5 + spin * 9) + Math.sin(phase * 1.4 + i * 0.75) * (6 + i * 1.6) * (0.4 + spin),
           by + 4 + i * (34 - spin * 18)]);
       }
-      parts.push(garment([ribbon(pts, pts.map((_, i) => 7 - i * 0.35))], accRef, 'szatén', { p }));
-      parts.push(`<path d="M${f(xR(by) - 8)} ${by - 6}l12 6l-12 6z" fill="${accRef}" stroke="${OUTLINE}" stroke-width="1.5"/>`);
+      parts.push(garment([ribbon(pts, pts.map((_, i) => 7 - i * 0.35))], acc('szalag'), 'szatén', { p }));
+      parts.push(`<path d="M${f(xR(by) - 8)} ${by - 6}l12 6l-12 6z" fill="${acc('szalag')}" stroke="${OUTLINE}" stroke-width="1.5"/>`);
     }
 
 
@@ -476,17 +478,17 @@ TR.render = (() => {
       const sl = ['halter', 'pantnelkuli', 'spagetti'].includes(top.neckline) || (top.neckline === 'egyvallas' && s === 'R') ? 'nincs' : top.sleeve;
       const ss = sleeveShapes(a, sl);
       if (ss.length) parts.push(garment(ss, topRef, top.fabric === 'halo' ? 'halo' : top.fabric, { p, sequins: x.flitter }));
-      if (x.kesztyu) parts.push(garment([capsule(lerpP(a.s, a.e, 0.72), 9.4, a.e, 9), capsule(a.e, 9, a.w, 7.2), capsule(a.w, 7.2, a.h, 6.2)], accRef, 'szatén', { p }));
+      if (x.kesztyu) parts.push(garment([capsule(lerpP(a.s, a.e, 0.72), 9.4, a.e, 9), capsule(a.e, 9, a.w, 7.2), capsule(a.w, 7.2, a.h, 6.2)], acc('kesztyu'), 'szatén', { p }));
     });
 
     // 8. fej
     parts.push(skinGroup([`M175 64A25 31 0 1 0 225 64A25 31 0 1 0 175 64Z`], skin, p));
     parts.push(hairFront(d.figure.hair, hairC));
     if (x.fejdisz) {
-      parts.push(`<path d="M176 50Q200 26 224 50" fill="none" stroke="${OUTLINE}" stroke-width="7" stroke-linecap="round"/><path d="M176 50Q200 26 224 50" fill="none" stroke="${accRef}" stroke-width="4.5" stroke-linecap="round"/>` +
-        [[184, 40], [200, 36], [216, 40]].map(q => `<circle cx="${q[0]}" cy="${q[1] - 3}" r="${q[0] === 200 ? 6 : 4}" fill="${accRef}" stroke="${OUTLINE}" stroke-width="1.5"/>`).join(''));
+      parts.push(`<path d="M176 50Q200 26 224 50" fill="none" stroke="${OUTLINE}" stroke-width="7" stroke-linecap="round"/><path d="M176 50Q200 26 224 50" fill="none" stroke="${acc('fejdisz')}" stroke-width="4.5" stroke-linecap="round"/>` +
+        [[184, 40], [200, 36], [216, 40]].map(q => `<circle cx="${q[0]}" cy="${q[1] - 3}" r="${q[0] === 200 ? 6 : 4}" fill="${acc('fejdisz')}" stroke="${OUTLINE}" stroke-width="1.5"/>`).join(''));
     }
-    if (x.nyakpant) parts.push(`<rect x="189" y="101" width="22" height="7" rx="3" fill="${accRef}" stroke="${OUTLINE}" stroke-width="1.6"/>`);
+    if (x.nyakpant) parts.push(`<rect x="189" y="101" width="22" height="7" rx="3" fill="${acc('nyakpant')}" stroke="${OUTLINE}" stroke-width="1.6"/>`);
 
     parts.push(M.layer(d, 'szabad', p));
     if (opts.editMotifs) parts.push(M.editLayer(d, opts.selectedMotif));
@@ -523,7 +525,7 @@ TR.render = (() => {
 
     const inner = `<defs>${shadeDefs(p)}${styleFilter(p, style)}${fig.defs}</defs>
       ${opts.noBg ? '' : background(p, view.bg, W, H)}
-      <ellipse cx="200" cy="${FLOOR + 4}" rx="${pose.air ? 45 : 70}" ry="9" fill="#000" opacity="${view.bg === 'szinpad' ? 0.45 : 0.14}"/>
+      ${opts.noBg ? '' : `<ellipse cx="200" cy="${FLOOR + 4}" rx="${pose.air ? 45 : 70}" ry="9" fill="#000" opacity="${view.bg === 'szinpad' ? 0.45 : 0.14}"/>`}
       <g ${uv ? `filter="url(#${p}-uv)"` : ''}>
         ${uv ? `<rect width="${W}" height="${H}" fill="#12002b" opacity="${opts.noBg ? 0 : 0.85}"/>` : ''}
         <g transform="translate(200 ${FLOOR}) scale(${SCALE}) translate(-200 ${f(sk.oy - FLOOR)})" ${figFilter ? `filter="${figFilter}"` : ''} stroke-linejoin="round">${fig.body}</g>
