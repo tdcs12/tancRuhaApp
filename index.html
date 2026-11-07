@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TáncRuha Stúdió</title>
+  <meta name="description" content="Táncruha-tervező: forma, minta, szín, mozgás és színpadi fény kipróbálása látványtervvel.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='6' r='4' fill='%23b5179e'/%3E%3Cpath d='M16 10 L9 28 H23 Z' fill='%237209b7'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><circle cx="16" cy="6" r="4" fill="currentColor"/><path d="M16 10 Q12 18 6 28 Q16 25 26 28 Q20 18 16 10Z" fill="currentColor" opacity=".75"/></svg>
+      <div>
+        <strong>TáncRuha Stúdió</strong>
+        <span>jelmeztervező táncosoknak</span>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-view="designer" role="tab">Tervező</button>
+      <button class="tab" data-view="group" role="tab">Csoportkép</button>
+      <button class="tab" data-view="gallery" role="tab">Galéria <span class="badge" id="galleryCount">0</span></button>
+      <button class="tab" data-view="sheet" role="tab">Tervlap</button>
+    </nav>
+    <div class="top-actions">
+      <input id="designName" class="name-input" type="text" aria-label="Terv neve" maxlength="60">
+      <button class="btn primary" id="saveBtn" title="Mentés a galériába">Mentés</button>
+    </div>
+  </header>
+
+  <!-- ================= TERVEZŐ ================= -->
+  <main id="view-designer" class="view active">
+    <aside class="panel left">
+      <div class="seg" id="sectionTabs">
+        <button class="active" data-sec="forma">Forma</button>
+        <button data-sec="minta">Minta &amp; szín</button>
+        <button data-sec="extra">Kiegészítők</button>
+        <button data-sec="alak">Alak</button>
+      </div>
+
+      <section class="sec active" data-sec="forma">
+        <h3>Felsőrész</h3>
+        <label>Hossz <select data-bind="top.length" data-opts="topLength"></select></label>
+        <label>Nyakkivágás</label>
+        <div class="chips" data-chips="top.neckline" data-opts="necklines"></div>
+        <label>Ujj</label>
+        <div class="chips" data-chips="top.sleeve" data-opts="sleeves"></div>
+        <label>Részlet <select data-bind="top.detail" data-opts="topDetails"></select></label>
+        <label>Anyag <select data-bind="top.fabric" data-opts="fabrics"></select></label>
+
+        <h3>Alsórész</h3>
+        <div class="bottom-grid" id="bottomGrid"></div>
+        <label>Derékmagasság <select data-bind="bottom.waist" data-opts="waists"></select></label>
+        <label class="range">Bőség / harangosság <input type="range" min="0" max="1" step="0.05" data-bind="bottom.flare"></label>
+        <label>Anyag <select data-bind="bottom.fabric" data-opts="fabrics"></select></label>
+        <label class="check"><input type="checkbox" data-bind="bottom.matchTop"> Egybeszabott ruha (a felső anyagából)</label>
+      </section>
+
+      <section class="sec" data-sec="minta">
+        <div class="seg small" id="zoneTabs">
+          <button class="active" data-zone="top">Felső</button>
+          <button data-zone="bottom">Alsó</button>
+          <button data-zone="accent">Díszítés</button>
+        </div>
+        <div class="pattern-grid" id="patternGrid"></div>
+        <div class="color-row" id="colorRow">
+          <label><input type="color" data-c="0"><span>Alap</span></label>
+          <label><input type="color" data-c="1"><span>Minta</span></label>
+          <label><input type="color" data-c="2"><span>Kiemelő</span></label>
+          <button class="icon-btn" id="swapColors" title="Színek forgatása">⟳</button>
+          <button class="icon-btn" id="randomZone" title="Véletlen minta és szín">🎲</button>
+        </div>
+        <label class="range">Méret <input type="range" min="0.4" max="3" step="0.05" id="patScale"></label>
+        <label class="range">Elforgatás <input type="range" min="0" max="180" step="1" id="patRot"></label>
+
+        <h3>Színharmónia</h3>
+        <div class="harmony">
+          <input type="color" id="harmonyBase" value="#b5179e" aria-label="Alapszín">
+          <select id="harmonyMode">
+            <option value="komplementer">Komplementer</option>
+            <option value="analog">Analóg</option>
+            <option value="triad">Triád</option>
+            <option value="split">Osztott kiegészítő</option>
+            <option value="tetrad">Tetrád</option>
+            <option value="mono">Monokróm</option>
+          </select>
+        </div>
+        <div class="harmony-swatches" id="harmonySwatches"></div>
+        <div class="btn-row">
+          <button class="btn" data-harm="top">Felsőre</button>
+          <button class="btn" data-harm="bottom">Alsóra</button>
+          <button class="btn" data-harm="all">Mindenre</button>
+        </div>
+      </section>
+
+      <section class="sec" data-sec="extra">
+        <h3>Kiegészítők</h3>
+        <div class="toggle-grid" id="extrasGrid"></div>
+        <p class="hint">A kiegészítők a <b>Díszítés</b> zóna mintáját és színeit használják (Minta &amp; szín fül).</p>
+      </section>
+
+      <section class="sec" data-sec="alak">
+        <h3>Bőrtónus</h3>
+        <div class="swatch-row" id="skinRow"></div>
+        <h3>Haj</h3>
+        <div class="chips" data-chips="figure.hair" data-opts="hairs"></div>
+        <label class="inline">Hajszín <input type="color" data-bind="figure.hairColor"></label>
+      </section>
+    </aside>
+
+    <section class="stage-wrap">
+      <div class="toolbar">
+        <div class="tool-group">
+          <span class="tool-label">Póz</span>
+          <select id="poseSelect" aria-label="Póz"></select>
+        </div>
+        <div class="tool-group seg small" id="motionSeg">
+          <button class="active" data-motion="none">Álló</button>
+          <button data-motion="spin">Forgás</button>
+          <button data-motion="choreo">Koreográfia</button>
+        </div>
+        <div class="tool-group">
+          <span class="tool-label">Háttér</span>
+          <select id="bgSelect" aria-label="Háttér"></select>
+        </div>
+        <div class="tool-group" id="lightGroup">
+          <span class="tool-label">Fény</span>
+          <select id="lightSelect" aria-label="Fény"></select>
+        </div>
+        <div class="tool-group">
+          <span class="tool-label">Stílus</span>
+          <select id="styleSelect" aria-label="Rajzstílus"></select>
+        </div>
+      </div>
+
+      <div class="stage" id="stage">
+        <div class="stage-inner" id="stageInner">
+          <div id="figureHost"></div>
+          <canvas id="sketchCanvas" width="800" height="1520"></canvas>
+        </div>
+        <div class="stage-side">
+          <button class="icon-btn" id="undoBtn" title="Visszavonás (Ctrl+Z)">↶</button>
+          <button class="icon-btn" id="redoBtn" title="Újra (Ctrl+Y)">↷</button>
+          <button class="icon-btn" id="sketchBtn" title="Rajzolás a tervre">✎</button>
+          <button class="icon-btn" id="pngBtn" title="Letöltés PNG-ként">PNG</button>
+          <button class="icon-btn" id="svgBtn" title="Letöltés SVG-ként">SVG</button>
+        </div>
+        <div class="sketch-tools" id="sketchTools" hidden>
+          <input type="color" id="penColor" value="#2b2233" aria-label="Toll színe">
+          <input type="range" id="penSize" min="1" max="24" value="3" aria-label="Toll mérete">
+          <button class="btn small" id="penMode">Toll</button>
+          <button class="btn small" id="sketchClear">Törlés</button>
+          <span class="hint">Rajzolj rá a tervre: díszítés, varrásvonal, ötlet…</span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel right">
+      <div class="card inspire">
+        <h3>✨ Inspiráció</h3>
+        <label>Táncstílus <select id="insStyle"></select></label>
+        <label>Hangulat <select id="insMood"></select></label>
+        <div class="locks">
+          <span>Megtartom:</span>
+          <label class="check"><input type="checkbox" id="lockForm"> forma</label>
+          <label class="check"><input type="checkbox" id="lockColor"> színek</label>
+          <label class="check"><input type="checkbox" id="lockPattern"> minta</label>
+        </div>
+        <button class="btn primary wide" id="inspireBtn">Generálj egy ötletet!</button>
+        <div class="concept" id="concept" hidden></div>
+      </div>
+
+      <div class="card">
+        <h3>Táncolhatóság</h3>
+        <div class="meters" id="meters"></div>
+        <ul class="tips" id="tips"></ul>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ================= CSOPORTKÉP ================= -->
+  <main id="view-group" class="view">
+    <div class="group-controls">
+      <label>Létszám <input type="range" id="grpCount" min="1" max="9" value="5"><output id="grpCountOut">5</output></label>
+      <label>Alakzat <select id="grpForm">
+        <option value="v">V-alakzat</option><option value="sor">Egy sor</option><option value="ket">Két sor (sakktábla)</option>
+        <option value="iv">Ív</option><option value="ek">Ék (szólista elöl)</option><option value="szort">Szórt</option>
+      </select></label>
+      <label>Ruhák <select id="grpVariant">
+        <option value="same">Mind azonos</option><option value="colors">Színvariációk</option>
+        <option value="solo">Szólista kiemelve</option><option value="gallery">Galéria tervei</option>
+      </select></label>
+      <label>Pózok <select id="grpPose">
+        <option value="sync">Egyszerre (unisono)</option><option value="canon">Kánon</option><option value="mixed">Vegyes</option>
+      </select></label>
+      <label class="check"><input type="checkbox" id="grpAnim" checked> Mozgás</label>
+    </div>
+    <div class="group-stage" id="groupStage"></div>
+    <p class="hint center">Így néz ki a terv a csoportban, a jelenlegi háttérrel és fénnyel. A színvariációk a minta színeit forgatják táncosonként.</p>
+  </main>
+
+  <!-- ================= GALÉRIA ================= -->
+  <main id="view-gallery" class="view">
+    <div class="gallery-head">
+      <h2>Mentett tervek</h2>
+      <div class="btn-row">
+        <button class="btn" id="exportAll">Exportálás (JSON)</button>
+        <label class="btn">Importálás<input type="file" id="importFile" accept="application/json" hidden></label>
+        <button class="btn" id="newDesign">+ Új terv</button>
+      </div>
+    </div>
+    <div class="gallery-grid" id="galleryGrid"></div>
+    <p class="empty" id="galleryEmpty">Még nincs mentett terv. A <b>Mentés</b> gombbal teheted ide a tervet, hogy később összehasonlíthasd, vagy csoportképen kipróbálhasd.</p>
+  </main>
+
+  <!-- ================= TERVLAP ================= -->
+  <main id="view-sheet" class="view">
+    <div class="sheet-actions">
+      <button class="btn primary" id="printBtn">Nyomtatás / PDF</button>
+      <span class="hint">A tervlap a varrónak, jelmeztervezőnek vagy a csapatnak szól.</span>
+    </div>
+    <article class="sheet" id="sheet"></article>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/patterns.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/advisor.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
