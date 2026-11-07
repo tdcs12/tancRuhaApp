@@ -227,6 +227,7 @@ input[type=color] { width: 40px; height: 34px; padding: 2px; border: 1px solid v
 .g-info b { display: block; }
 .g-info small { color: var(--muted); }
 .g-actions { display: flex; gap: 6px; padding: 8px 12px 12px; }
+.g-actions .confirm { background: var(--warn); color: #fff; border-color: var(--warn); }
 .g-actions .primary { flex: 1; justify-content: center; }
 .empty { text-align: center; color: var(--muted); padding: 50px 20px; }
 

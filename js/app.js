@@ -275,7 +275,12 @@
         const c = U.clone(item); c.id = U.uid(); c.name = item.name + ' (másolat)'; c.design.name = c.name; c.date = Date.now();
         state.gallery.unshift(c); persistGallery(); renderGallery();
       } else if (b.dataset.act === 'del') {
-        if (!confirm(`Biztosan törlöd: „${item.name}”?`)) return;
+        // kétlépéses törlés (nincs felugró ablak)
+        if (!b.classList.contains('confirm')) {
+          b.classList.add('confirm'); b.textContent = 'Biztos?';
+          setTimeout(() => { if (b.isConnected) { b.classList.remove('confirm'); b.textContent = '✕'; } }, 2500);
+          return;
+        }
         state.gallery = state.gallery.filter(g => g.id !== id); persistGallery(); renderGallery();
       }
     });
