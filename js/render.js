@@ -353,7 +353,7 @@ TR.render = (() => {
   }
 
   /* ---------- Teljes alak ---------- */
-  function figure(design, sk, p, motion) {
+  function figure(design, sk, p, motion, opts = {}) {
     const phase = motion.phase || 0, spin = motion.spin || 0;
     const d = design, top = d.top, b = d.bottom, x = d.extras || {};
     const skin = d.figure.skin, hairC = d.figure.hairColor;
@@ -368,6 +368,14 @@ TR.render = (() => {
     const sway = (D.fabrics[bottomFabric] || D.fabrics.jersey).sway;
     const wy = waistY(b, top);
     const parts = [];
+    const M = TR.motifs;
+    defs.push(M.gemDef(p));
+    const bottomMotifs = ds => {
+      const l = M.layer(d, 'bottom', p);
+      if (!l || !ds.length) return '';
+      defs.push(`<clipPath id="${p}-botclip">${ds.map(x => `<path d="${x}"/>`).join('')}</clipPath>`);
+      return `<g clip-path="url(#${p}-botclip)">${l}</g>`;
+    };
 
     // 1. hátsó réteg: haj, köpeny
     parts.push(hairBack(d.figure.hair, hairC, phase, spin));
@@ -391,6 +399,7 @@ TR.render = (() => {
       const ds = [pelvis(wy)];
       ['L', 'R'].forEach(s => ds.push(pantLeg(sk.leg[s], b.type, Math.sin(phase + (s === 'L' ? 0 : 1.5)) * sway * (1 + spin * 2))));
       parts.push(garment(ds, bottomRef, bottomFabric, { p }));
+      parts.push(bottomMotifs(ds));
     }
 
     // 4. szoknya
@@ -409,7 +418,7 @@ TR.render = (() => {
       const body = sk2.separate
         ? sk2.ds.map((dd, i) => garment([dd], bottomRef, bottomFabric, { p, extra: i === sk2.ds.length - 1 ? extra : '' })).join('')
         : garment(sk2.ds, bottomRef, bottomFabric, { p, extra });
-      return `<g${maskAttr}>${body}</g>${ruffle}`;
+      return `<g${maskAttr}>${body}${bottomMotifs(sk2.ds)}</g>${ruffle}`;
     };
     if (top.length !== 'tunic') parts.push(skirtGroup());
 
@@ -418,6 +427,8 @@ TR.render = (() => {
     defs.push(`<clipPath id="${p}-topclip"><path d="${bodice}"/></clipPath>`);
     const det = topDetail(top, p, accRef, skin, sk, phase);
     parts.push(garment([bodice], topRef, top.fabric, { p, sequins: x.flitter, extra: det ? `<g clip-path="url(#${p}-topclip)">${det}</g>` : '' }));
+    const topM = M.layer(d, 'top', p);
+    if (topM) parts.push(`<g clip-path="url(#${p}-topclip)">${topM}</g>`);
     if (top.neckline === 'spagetti') parts.push(`<path d="M176 158L178 128M224 158L222 128" stroke="${OUTLINE}" stroke-width="4.5" stroke-linecap="round"/><path d="M176 158L178 128M224 158L222 128" stroke="${topRef}" stroke-width="2.6" stroke-linecap="round"/>`);
     if (top.length === 'tunic') parts.push(skirtGroup());
 
@@ -477,6 +488,8 @@ TR.render = (() => {
     }
     if (x.nyakpant) parts.push(`<rect x="189" y="101" width="22" height="7" rx="3" fill="${accRef}" stroke="${OUTLINE}" stroke-width="1.6"/>`);
 
+    parts.push(M.layer(d, 'szabad', p));
+    if (opts.editMotifs) parts.push(M.editLayer(d, opts.selectedMotif));
     return { defs: defs.join(''), body: parts.join('') };
   }
 
@@ -500,7 +513,7 @@ TR.render = (() => {
     const pose = opts.poseData || poseByName(view.pose);
     const sk = skeleton(pose);
     const motion = opts.motion || { phase: 0, spin: 0 };
-    const fig = figure(design, sk, p, motion);
+    const fig = figure(design, sk, p, motion, opts);
     const style = view.style || 'tiszta';
     const light = view.bg === 'szinpad' ? (view.light || 'feher') : 'feher';
     let figFilter = '';
@@ -523,5 +536,11 @@ TR.render = (() => {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${opts.width || W}" height="${opts.height || H}" class="figure-svg">${inner}</svg>`;
   }
 
-  return { svg, skeleton, lerpPose, poseByName, background, lightOverlay, FLOOR };
+  /* Képernyő (SVG viewBox) pont → az alak saját koordinátái */
+  function toFigure(pt, pose) {
+    const sk = skeleton(pose);
+    return [(pt[0] - 200) / SCALE + 200, (pt[1] - FLOOR) / SCALE + FLOOR - sk.oy];
+  }
+
+  return { svg, toFigure, skeleton, lerpPose, poseByName, background, lightOverlay, FLOOR };
 })();

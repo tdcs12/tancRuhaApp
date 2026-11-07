@@ -113,7 +113,8 @@ TR.data = {
     pikkely: 'Pikkely',
     konfetti: 'Konfetti',
     mozaik: 'Mozaik / glitch',
-    galaxis: 'Galaxis'
+    galaxis: 'Galaxis',
+    kep: 'Saját kép / rajz'
   },
 
   poses: {
@@ -211,6 +212,17 @@ TR.data = {
       fabrics: ['lycra', 'tull', 'sifon'],
       extras: ['fejdisz', 'flitter', 'nyakpant'],
       desc: 'Tiszta vonalak, tüll, finom díszítés.'
+    },
+    verseny: {
+      name: 'Versenydressz (latin / show)',
+      lengths: ['leotard'], necklines: ['halter', 'v', 'egyvallas', 'pantnelkuli', 'kare'],
+      sleeves: ['nincs', 'hosszu', 'harang'], details: ['kivagas', 'atlos', 'halo', 'nincs'],
+      bottoms: ['mini', 'asym', 'zsebkendo', 'retegelt', 'sliccelt'],
+      patterns: ['egyszinu', 'ombre', 'allat', 'pikkely'],
+      fabrics: ['lycra', 'lame', 'szatén'],
+      extras: ['rojt', 'flitter', 'nyakpant', 'fodor'],
+      desc: 'Testre simuló body, strasszokkal kirakott motívumok, lendülő szegély.',
+      motifs: true
     },
     futur: {
       name: 'Futurisztikus / experimentális',
@@ -319,6 +331,9 @@ TR.data = {
       },
       accent: { fill: { pattern: 'egyszinu', colors: ['#ffd166', '#ffffff', '#f72585'], scale: 1, rotation: 0 } },
       extras: { ov: false, rojt: false, fodor: false, kopeny: false, szalag: true, kesztyu: false, fejdisz: false, nyakpant: false, flitter: false },
+      motifs: [],
+      customMotifs: [],
+      measures: null,
       sketch: null,
       notes: ''
     };

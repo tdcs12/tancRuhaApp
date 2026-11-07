@@ -16,6 +16,8 @@
     const out = Object.assign(base, d || {});
     ['figure', 'top', 'bottom', 'accent', 'extras'].forEach(k => { out[k] = Object.assign(D.defaultDesign()[k], (d || {})[k] || {}); });
     ['top', 'bottom', 'accent'].forEach(k => { out[k].fill = Object.assign(D.defaultDesign()[k].fill, ((d || {})[k] || {}).fill || {}); });
+    if (!Array.isArray(out.motifs)) out.motifs = [];
+    if (!Array.isArray(out.customMotifs)) out.customMotifs = [];
     return out;
   }
   const state = {
@@ -118,6 +120,7 @@
     // minták
     $('#patternGrid').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.val === 'kep' && !zoneFill().image) { $('#imgUpload').click(); return; }
       zoneFill().pattern = b.dataset.val; changed();
     });
     $$('#colorRow input[type=color]').forEach(inp => {
@@ -181,6 +184,7 @@
       $$('#sectionTabs button').forEach(x => x.classList.toggle('active', x === b));
       $$('.panel.left .sec').forEach(s => s.classList.toggle('active', s.dataset.sec === b.dataset.sec));
       if (b.dataset.sec === 'forma') refreshBottomThumbs();
+      renderFigure();
     });
 
     // eszköztár
@@ -300,6 +304,7 @@
   /* ---------- Vezérlők frissítése az állapotból ---------- */
   function refreshControls(opts = {}) {
     const d = state.design;
+    refreshMotifUI();
     $$('select[data-bind], input[data-bind]').forEach(el => {
       const v = getPath(d, el.dataset.bind);
       if (el.type === 'checkbox') el.checked = !!v;
@@ -321,7 +326,7 @@
     $('#patScale').value = zf.scale; $('#patRot').value = zf.rotation;
     if (!opts.skipThumbs || opts.all) {
       $('#patternGrid').innerHTML = Object.keys(D.patterns).map(k =>
-        `<button type="button" data-val="${k}" class="${zf.pattern === k ? 'active' : ''}" title="${D.patterns[k]}">${TR.patterns.swatch(k, zf.colors)}<span>${D.patterns[k]}</span></button>`).join('');
+        `<button type="button" data-val="${k}" class="${zf.pattern === k ? 'active' : ''}" title="${D.patterns[k]}">${TR.patterns.swatch(k, zf.colors, 46, zf.image)}<span>${D.patterns[k]}</span></button>`).join('');
     }
     if (document.activeElement !== $('#designName')) $('#designName').value = d.name || '';
     if (!opts.skipThumbs && $('.sec[data-sec=forma]').classList.contains('active')) refreshBottomThumbs();
@@ -380,7 +385,9 @@
   let lastT = 0;
   function renderFigure(t = lastT) {
     const m = motionAt(t, state.view.motion);
-    $('#figureHost').innerHTML = R.svg(state.design, state.view, { idp: 'main', poseData: m.pose, motion: m.motion });
+    const edit = motifEditing();
+    $('#figureHost').classList.toggle('editing', edit);
+    $('#figureHost').innerHTML = R.svg(state.design, state.view, { idp: 'main', poseData: m.pose, motion: m.motion, editMotifs: edit, selectedMotif: edit ? state.selMotif : null });
   }
 
   let rafId = null, lastFrame = 0;
@@ -622,11 +629,274 @@
     if (name === 'gallery') renderGallery();
     if (name === 'group') renderGroup(lastT);
     if (name === 'sheet') buildSheet();
+    if (name === 'sewing') buildSewing();
+    document.body.dataset.view = name;
     if (name === 'designer') renderFigure();
+  }
+
+  /* ---------- Motívumok ---------- */
+  const MO = TR.motifs;
+  state.selMotif = null;
+  function motifEditing() {
+    return state.activeView === 'designer' && state.view.motion === 'none' &&
+      $('.sec[data-sec=motivum]').classList.contains('active');
+  }
+  const selMotif = () => (state.design.motifs || []).find(m => m.id === state.selMotif);
+  function addMotif(type, props) {
+    const m = Object.assign(MO.newMotif(type, 200, 175), props || {});
+    if (state.design.bottom.type !== 'nincs' && !props) m.target = 'top';
+    state.design.motifs.push(m); state.selMotif = m.id;
+    changed();
+  }
+  function buildMotifUI() {
+    $('#motifLib').innerHTML = Object.keys(MO.SHAPES).map(k =>
+      `<button type="button" data-type="${k}" title="${MO.SHAPES[k].name}">${MO.preview(k)}<span>${MO.SHAPES[k].name}</span></button>`).join('');
+    $('#mmStamps').innerHTML = Object.keys(MO.SHAPES).filter(k => !MO.SHAPES[k].stroke).map(k =>
+      `<button type="button" data-type="${k}" title="${MO.SHAPES[k].name}">${MO.preview(k)}</button>`).join('');
+    $('#mTarget').innerHTML = Object.keys(MO.TARGETS).map(k => `<option value="${k}">${MO.TARGETS[k]}</option>`).join('');
+    $('#mRepeat').innerHTML = Object.keys(MO.REPEATS).map(k => `<option value="${k}">${MO.REPEATS[k]}</option>`).join('');
+    $('#motifLib').addEventListener('click', e => { const b = e.target.closest('button'); if (b) addMotif(b.dataset.type); });
+    $('#customLib').addEventListener('click', e => {
+      const del = e.target.closest('[data-delc]');
+      if (del) {
+        const id = del.dataset.delc;
+        state.design.customMotifs = state.design.customMotifs.filter(c => c.id !== id);
+        state.design.motifs = state.design.motifs.filter(m => m.type !== 'custom:' + id);
+        changed(); return;
+      }
+      const b = e.target.closest('button[data-type]'); if (b) addMotif(b.dataset.type, { outline: false, size: 60 });
+    });
+    $('#motifList').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.selMotif = b.dataset.id; renderFigure(); refreshMotifUI(); } });
+    const bind = (id, key, num) => {
+      const el = $(id);
+      el.addEventListener(el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input', () => {
+        const m = selMotif(); if (!m) return;
+        m[key] = el.type === 'checkbox' ? el.checked : num ? parseFloat(el.value) : el.value;
+        changed({ immediate: el.type === 'checkbox' || el.tagName === 'SELECT', skipThumbs: true });
+      });
+      if (el.type === 'range' || el.type === 'color') el.addEventListener('change', () => commit(true));
+    };
+    bind('#mTarget', 'target'); bind('#mRepeat', 'repeat'); bind('#mCount', 'count', true); bind('#mSize', 'size', true);
+    bind('#mRot', 'rot', true); bind('#mGap', 'gap', true); bind('#mOpacity', 'opacity', true);
+    bind('#mColor', 'color'); bind('#mColor2', 'color2'); bind('#mOutline', 'outline'); bind('#mMirror', 'mirror');
+    $('#mDel').addEventListener('click', () => { state.design.motifs = state.design.motifs.filter(m => m.id !== state.selMotif); state.selMotif = null; changed(); });
+    $('#mDup').addEventListener('click', () => {
+      const m = selMotif(); if (!m) return;
+      const c = Object.assign(U.clone(m), { id: U.uid(), x: m.x + 14, y: m.y + 14 });
+      state.design.motifs.push(c); state.selMotif = c.id; changed();
+    });
+    const move = dir => {
+      const arr = state.design.motifs, i = arr.findIndex(m => m.id === state.selMotif), j = i + dir;
+      if (i < 0 || j < 0 || j >= arr.length) return;
+      [arr[i], arr[j]] = [arr[j], arr[i]]; changed();
+    };
+    $('#mUp').addEventListener('click', () => move(1)); $('#mDown').addEventListener('click', () => move(-1));
+    $('#motifPresets').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      TR.advisor.motifPreset(b.dataset.preset, state.design).forEach(m => state.design.motifs.push(m));
+      state.selMotif = state.design.motifs[state.design.motifs.length - 1].id;
+      changed(); toast('Díszítés hozzáadva – a ruhán húzva igazíthatod');
+    });
+
+    // húzás a ruhán
+    const host = $('#figureHost');
+    let drag = null;
+    const svgPoint = e => {
+      const svg = host.querySelector('svg'); if (!svg) return null;
+      const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+      const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+      return R.toFigure([q.x, q.y], R.poseByName(state.view.pose));
+    };
+    host.addEventListener('pointerdown', e => {
+      if (!motifEditing()) return;
+      const hit = e.target.closest('[data-mid]');
+      if (!hit) { if (state.selMotif) { state.selMotif = null; renderFigure(); refreshMotifUI(); } return; }
+      e.preventDefault();
+      state.selMotif = hit.dataset.mid; refreshMotifUI();
+      const m = selMotif(), p = svgPoint(e);
+      drag = { id: m.id, dx: m.x - p[0], dy: m.y - p[1], moved: false };
+      host.setPointerCapture(e.pointerId);
+      renderFigure();
+    });
+    host.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const m = selMotif(), p = svgPoint(e); if (!m || !p) return;
+      m.x = Math.round(p[0] + drag.dx); m.y = Math.round(p[1] + drag.dy); drag.moved = true;
+      renderFigure();
+    });
+    const end = () => { if (drag && drag.moved) { updateAnalysis(); commit(true); } drag = null; };
+    host.addEventListener('pointerup', end); host.addEventListener('pointercancel', end);
+
+    // billentyűk: nyilak mozgatnak, Delete töröl
+    document.addEventListener('keydown', e => {
+      if (!motifEditing() || !selMotif() || e.target.matches('input, textarea, select')) return;
+      const m = selMotif(), st = e.shiftKey ? 10 : 2;
+      const k = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, -st], ArrowDown: [0, st] }[e.key];
+      if (k) { e.preventDefault(); m.x += k[0]; m.y += k[1]; changed({ immediate: false, skipThumbs: true }); }
+      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); $('#mDel').click(); }
+    });
+  }
+  function refreshMotifUI() {
+    const d = state.design;
+    $('#customLib').innerHTML = d.customMotifs.length
+      ? d.customMotifs.map(c => `<button type="button" data-type="custom:${c.id}" title="${U.esc(c.name)}"><img src="${c.data}" alt=""><span>${U.esc(c.name)}</span><i data-delc="${c.id}" title="Törlés">✕</i></button>`).join('')
+      : '<p class="hint">Még nincs saját motívumod – rajzolj egyet!</p>';
+    if (state.selMotif && !selMotif()) state.selMotif = null;
+    const has = d.motifs.length > 0;
+    $('#motifEdit').hidden = !has;
+    if (!has) return;
+    const name = m => m.type.startsWith('custom:') ? ((d.customMotifs.find(c => 'custom:' + c.id === m.type) || {}).name || 'Saját') : (MO.SHAPES[m.type] || {}).name;
+    $('#motifList').innerHTML = d.motifs.map(m => `<button type="button" data-id="${m.id}" class="${m.id === state.selMotif ? 'active' : ''}"><i style="background:${m.color}"></i>${U.esc(name(m))}</button>`).join('');
+    const m = selMotif();
+    $$('#motifEdit input, #motifEdit select, #mDel, #mDup, #mUp, #mDown').forEach(el => { el.disabled = !m; });
+    if (!m) return;
+    const set = (id, v) => { const el = $(id); if (document.activeElement !== el) { if (el.type === 'checkbox') el.checked = !!v; else el.value = v; } };
+    set('#mTarget', m.target); set('#mRepeat', m.repeat); set('#mCount', m.count); set('#mSize', m.size); set('#mRot', m.rot);
+    set('#mGap', m.gap); set('#mOpacity', m.opacity); set('#mColor', m.color); set('#mColor2', m.color2); set('#mOutline', m.outline); set('#mMirror', m.mirror);
+    $('#mCount').disabled = m.repeat === 'egy'; $('#mGap').disabled = m.repeat === 'egy';
+  }
+
+  /* ---------- Motívumrajzoló ---------- */
+  function setupMotifEditor() {
+    const modal = $('#motifModal'), cv = $('#mmCanvas'), ctx = cv.getContext('2d', { willReadFrequently: true });
+    let erase = false, drawing = false, last = null, undoStack = [];
+    const open = () => { modal.hidden = false; $('#mmName').value = ''; };
+    const close = () => { modal.hidden = true; };
+    $('#openMotifEditor').addEventListener('click', open);
+    $('#mmClose').addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.hidden) close(); });
+    const snap = () => { undoStack.push(ctx.getImageData(0, 0, cv.width, cv.height)); if (undoStack.length > 30) undoStack.shift(); };
+    const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * cv.width, (e.clientY - r.top) / r.height * cv.height]; };
+    function symSeg(a, b) {
+      const sym = $('#mmSym').value, c = cv.width / 2;
+      const n = sym === 'm' ? 1 : +sym, mir = sym === 'm' || n >= 6;
+      ctx.globalCompositeOperation = erase ? 'destination-out' : 'source-over';
+      ctx.strokeStyle = $('#mmColor').value; ctx.lineWidth = +$('#mmSize').value * (erase ? 2 : 1);
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      for (let i = 0; i < n; i++) {
+        for (const flip of mir ? [1, -1] : [1]) {
+          ctx.save(); ctx.translate(c, c); ctx.rotate(i * 2 * Math.PI / n); ctx.scale(flip, 1); ctx.translate(-c, -c);
+          ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.restore();
+        }
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    cv.addEventListener('pointerdown', e => { snap(); drawing = true; last = pos(e); cv.setPointerCapture(e.pointerId); symSeg(last, [last[0] + 0.1, last[1]]); });
+    cv.addEventListener('pointermove', e => { if (!drawing) return; const p = pos(e); symSeg(last, p); last = p; });
+    const end = () => { drawing = false; };
+    cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+    $('#mmPen').addEventListener('click', () => { erase = !erase; $('#mmPen').textContent = erase ? 'Radír' : 'Toll'; });
+    $('#mmUndo').addEventListener('click', () => { const im = undoStack.pop(); if (im) ctx.putImageData(im, 0, 0); });
+    $('#mmClear').addEventListener('click', () => { snap(); ctx.clearRect(0, 0, cv.width, cv.height); });
+    $('#mmStamps').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      const sh = MO.SHAPES[b.dataset.type]; if (!sh || !sh.d) return;
+      snap();
+      ctx.save(); ctx.translate(cv.width / 2, cv.height / 2); ctx.scale(cv.width / 120, cv.height / 120);
+      ctx.fillStyle = $('#mmColor').value; ctx.fill(new Path2D(sh.d));
+      ctx.restore();
+    });
+    const exportMotif = () => {
+      const out = document.createElement('canvas'); out.width = out.height = 200;
+      out.getContext('2d').drawImage(cv, 0, 0, 200, 200);
+      return out.toDataURL('image/png');
+    };
+    const isEmpty = () => !ctx.getImageData(0, 0, cv.width, cv.height).data.some((v, i) => i % 4 === 3 && v > 0);
+    $('#mmSave').addEventListener('click', () => {
+      if (isEmpty()) { toast('A vászon üres – rajzolj vagy nyomj rá egy alakzatot'); return; }
+      const c = { id: U.uid(), name: $('#mmName').value.trim() || `Motívum ${state.design.customMotifs.length + 1}`, data: exportMotif() };
+      state.design.customMotifs.push(c);
+      close(); addMotif('custom:' + c.id, { outline: false, size: 60 });
+      toast(`„${c.name}” elmentve és a ruhára téve`);
+    });
+    $('#mmAsPattern').addEventListener('click', () => {
+      if (isEmpty()) { toast('A vászon üres – rajzolj vagy nyomj rá egy alakzatot'); return; }
+      const f = zoneFill(); f.image = exportMotif(); f.pattern = 'kep'; f.scale = 0.5;
+      close(); changed(); toast('A rajz ismétlődő mintaként a kiválasztott zónára került (Minta & szín fül)');
+    });
+  }
+
+  /* ---------- Minta képből ---------- */
+  function setupImageUpload() {
+    $('#imgUpload').addEventListener('change', async e => {
+      const file = e.target.files[0]; e.target.value = '';
+      if (!file) return;
+      try {
+        const res = await TR.imagetools.loadFile(file);
+        const f = zoneFill(); f.image = res.dataUrl; f.pattern = 'kep'; f.scale = 1.4;
+        state.lastPalette = res.palette;
+        showPalette();
+        changed(); toast('A kép mintaként a ruhára került');
+      } catch (err) { toast('Ezt a fájlt nem sikerült betölteni: válassz JPG vagy PNG képet.'); }
+    });
+    $('#imgPalette').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      const pal = state.lastPalette || [];
+      if (b.dataset.all) {
+        const f = zoneFill(); f.colors = [pal[0], pal[1] || pal[0], pal[2] || pal[0]];
+        toast('A kép színei átvéve – válassz hozzá egy mintát');
+      } else { zoneFill().colors[0] = b.dataset.c; }
+      changed();
+    });
+  }
+  function showPalette() {
+    const pal = state.lastPalette;
+    $('#imgPalette').hidden = !pal;
+    if (!pal) return;
+    $('#imgPalette').innerHTML = `<span class="hint">A kép színei:</span>${pal.map(c => `<button type="button" style="background:${c}" data-c="${c}" title="${c} – alapszínnek"></button>`).join('')}<button type="button" class="btn small" data-all="1">Színek átvétele</button>`;
+  }
+
+  /* ---------- Szabásminta ---------- */
+  const SW = TR.sewing;
+  function measures() {
+    if (!state.design.measures) state.design.measures = Object.assign(SW.defaults(), store.get('tancruha.measures', {}));
+    return state.design.measures;
+  }
+  function setupSewing() {
+    $('#sizeSelect').innerHTML = Object.keys(SW.SIZES).map(k => `<option value="${k}">${SW.SIZES[k].name}</option>`).join('') + '<option value="egyedi">Egyedi méretek</option>';
+    $('#measureForm').innerHTML = SW.FIELDS.map(([k, n]) => `<label for="ms-${k}">${n}</label><input type="number" id="ms-${k}" data-m="${k}" min="5" max="250" step="0.5" inputmode="decimal">`).join('');
+    $('#sizeSelect').addEventListener('change', e => {
+      const v = e.target.value, m = measures();
+      if (SW.SIZES[v]) Object.assign(m, SW.SIZES[v], { size: v }); else m.size = 'egyedi';
+      afterMeasure();
+    });
+    $('#measureForm').addEventListener('input', e => {
+      const k = e.target.dataset.m; if (!k) return;
+      const v = parseFloat(e.target.value); if (!(v > 0)) return;
+      const m = measures(); m[k] = v; m.size = 'egyedi'; $('#sizeSelect').value = 'egyedi';
+      clearTimeout(setupSewing._t); setupSewing._t = setTimeout(afterMeasure, 250);
+    });
+    $('#sewSvgBtn').addEventListener('click', () => {
+      const r = SW.sheet(state.design, measures(), { realSize: true });
+      download(fileBase() + '-szabasminta.svg', new Blob([r.svg], { type: 'image/svg+xml' }));
+    });
+    $('#sewPrintBtn').addEventListener('click', () => window.print());
+  }
+  function afterMeasure() {
+    store.set('tancruha.measures', measures());
+    commit(true); buildSewing();
+  }
+  function buildSewing() {
+    const m = measures();
+    $('#sizeSelect').value = SW.SIZES[m.size] ? m.size : 'egyedi';
+    $$('#measureForm input').forEach(inp => { if (document.activeElement !== inp) inp.value = m[inp.dataset.m]; });
+    const r = SW.sheet(state.design, m);
+    $('#sewSheet').innerHTML = r.svg;
+    $('#cutList').innerHTML = r.pieces.map(p => `<tr><td>${U.esc(p.name)}</td><td>${U.esc(p.cut)}</td><td>${U.esc((D.fabrics[p.fabric] || {}).name || p.fabric)}</td><td>${U.esc(p.note || '')}</td></tr>`).join('');
+    $('#needList').innerHTML = r.fabricNeed.map(n => `<li><b>${U.esc(n.fabric)}:</b> kb. ${String(n.meters).replace('.', ',')} m (140 cm széles)</li>`).join('') +
+      r.extraNotes.map(n => `<li>${U.esc(n)}</li>`).join('');
+    $('#sewInfo').innerHTML = r.stretch
+      ? 'Rugalmas anyag: a minta <b>negatív bőséggel</b> készül (kisebb a testméretnél), hogy feszesen simuljon.'
+      : 'Nem rugalmas anyag: a minta <b>mozgásbőséggel</b> készül; zárásnak cipzár vagy patent kell.';
   }
 
   /* ---------- Indítás ---------- */
   buildControls();
+  buildMotifUI();
+  setupMotifEditor();
+  setupImageUpload();
+  setupSewing();
   setupSketch();
   loadSketch();
   syncViewControls();

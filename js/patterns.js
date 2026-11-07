@@ -158,6 +158,13 @@ TR.patterns = (() => {
         break;
       }
 
+      case 'kep': {
+        if (!fill.image) return { def: '', ref: c1 };
+        const S = 120 * s;
+        def = pat(S, S, bg(S, S, c1) + `<image href="${fill.image}" width="${f(S)}" height="${f(S)}" preserveAspectRatio="xMidYMid slice"/>`);
+        break;
+      }
+
       default:
         return { def: '', ref: c1 };
     }
@@ -165,9 +172,12 @@ TR.patterns = (() => {
   }
 
   /* Kis előnézeti minta a mintaválasztóhoz */
-  function swatch(name, colors, size = 46) {
+  function swatch(name, colors, size = 46, image) {
     const id = 'sw-' + name + '-' + Math.random().toString(36).slice(2, 7);
-    const m = make(id, { pattern: name, colors, scale: name === 'ombre' ? 1 : 0.6, rotation: 0 });
+    if (name === 'kep' && !image) {
+      return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" aria-hidden="true"><rect width="${size}" height="${size}" rx="8" fill="${colors[0]}" opacity=".25"/><path d="M14 30l7-8 5 5 4-4 6 7z" fill="${colors[1]}"/><circle cx="30" cy="16" r="3.5" fill="${colors[1]}"/><path d="M23 9v-4m-2 2h4" stroke="${colors[1]}" stroke-width="1.5"/></svg>`;
+    }
+    const m = make(id, { pattern: name, colors, scale: name === 'ombre' ? 1 : name === 'kep' ? 0.38 : 0.6, rotation: 0, image });
     // A színátmenet a teljes alakhoz van méretezve, ezért itt a négyzetre szabjuk
     const def = name === 'ombre'
       ? `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${colors[0]}"/><stop offset=".55" stop-color="${colors[1]}"/><stop offset="1" stop-color="${colors[2]}"/></linearGradient>`

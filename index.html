@@ -22,6 +22,7 @@
       <button class="tab" data-view="group" role="tab">Csoportkép</button>
       <button class="tab" data-view="gallery" role="tab">Galéria <span class="badge" id="galleryCount">0</span></button>
       <button class="tab" data-view="sheet" role="tab">Tervlap</button>
+      <button class="tab" data-view="sewing" role="tab">Szabásminta</button>
     </nav>
     <div class="top-actions">
       <input id="designName" class="name-input" type="text" aria-label="Terv neve" maxlength="60">
@@ -35,6 +36,7 @@
       <div class="seg" id="sectionTabs">
         <button class="active" data-sec="forma">Forma</button>
         <button data-sec="minta">Minta &amp; szín</button>
+        <button data-sec="motivum">Motívumok</button>
         <button data-sec="extra">Kiegészítők</button>
         <button data-sec="alak">Alak</button>
       </div>
@@ -71,6 +73,11 @@
           <button class="icon-btn" id="swapColors" title="Színek forgatása">⟳</button>
           <button class="icon-btn" id="randomZone" title="Véletlen minta és szín">🎲</button>
         </div>
+        <div class="img-row">
+          <label class="btn small">📷 Minta képből<input type="file" id="imgUpload" accept="image/*" hidden></label>
+          <span class="hint">Tölts fel egy fotót (szövet, festmény, virág…): mintaként rákerül a ruhára, és kiolvassuk a színeit.</span>
+        </div>
+        <div class="img-palette" id="imgPalette" hidden></div>
         <label class="range">Méret <input type="range" min="0.4" max="3" step="0.05" id="patScale"></label>
         <label class="range">Elforgatás <input type="range" min="0" max="180" step="1" id="patRot"></label>
 
@@ -91,6 +98,47 @@
           <button class="btn" data-harm="top">Felsőre</button>
           <button class="btn" data-harm="bottom">Alsóra</button>
           <button class="btn" data-harm="all">Mindenre</button>
+        </div>
+      </section>
+
+      <section class="sec" data-sec="motivum">
+        <h3>Alapmotívumok</h3>
+        <div class="motif-lib" id="motifLib"></div>
+        <h3>Saját motívumaim</h3>
+        <div class="motif-lib" id="customLib"></div>
+        <button class="btn wide" id="openMotifEditor" type="button">✎ Saját motívum rajzolása</button>
+        <h3>Gyors díszítések</h3>
+        <div class="btn-row" id="motifPresets">
+          <button class="btn small" data-preset="nyak" type="button">Strasszsor a nyakkivágáson</button>
+          <button class="btn small" data-preset="koszoru" type="button">Kristálykoszorú</button>
+          <button class="btn small" data-preset="szort" type="button">Szórt csillogás</button>
+          <button class="btn small" data-preset="ivek" type="button">Tükrözött ívek</button>
+        </div>
+        <p class="hint">Kattints egy motívumra: a ruhára kerül. A ruhán megfogva húzhatod a helyére, a lenti beállításokkal méretezheted, forgathatod, sorba vagy koszorúba rendezheted.</p>
+        <div id="motifEdit" hidden>
+          <h3>Kiválasztott motívum</h3>
+          <div class="motif-list" id="motifList"></div>
+          <label>Hová kerüljön <select id="mTarget"></select></label>
+          <div class="two">
+            <label>Elrendezés <select id="mRepeat"></select></label>
+            <label class="range">Darabszám <input type="range" id="mCount" min="1" max="40" step="1"></label>
+          </div>
+          <label class="range">Méret <input type="range" id="mSize" min="3" max="160" step="1"></label>
+          <label class="range">Elforgatás <input type="range" id="mRot" min="-180" max="180" step="1"></label>
+          <label class="range">Távolság az ismétlések között <input type="range" id="mGap" min="0.6" max="4" step="0.05"></label>
+          <label class="range">Átlátszóság <input type="range" id="mOpacity" min="0.15" max="1" step="0.05"></label>
+          <div class="color-row">
+            <label><input type="color" id="mColor"><span>Szín</span></label>
+            <label><input type="color" id="mColor2"><span>Részlet</span></label>
+            <label class="check"><input type="checkbox" id="mOutline"> Kontúr</label>
+            <label class="check"><input type="checkbox" id="mMirror"> Tükrözés</label>
+          </div>
+          <div class="btn-row">
+            <button class="btn small" id="mDup" type="button">Másolat</button>
+            <button class="btn small" id="mUp" type="button">Előrébb</button>
+            <button class="btn small" id="mDown" type="button">Hátrébb</button>
+            <button class="btn small ghost" id="mDel" type="button">Törlés</button>
+          </div>
         </div>
       </section>
 
@@ -223,12 +271,71 @@
     <article class="sheet" id="sheet"></article>
   </main>
 
+  <!-- ================= SZABÁSMINTA ================= -->
+  <main id="view-sewing" class="view">
+    <aside class="panel sew-panel">
+      <h3>Méretek (cm)</h3>
+      <label>Alapméret <select id="sizeSelect"></select></label>
+      <div class="measure-grid" id="measureForm"></div>
+      <div class="sew-note" id="sewInfo"></div>
+      <div class="btn-row">
+        <button class="btn primary" id="sewSvgBtn" type="button">Letöltés 1:1 méretben (SVG)</button>
+        <button class="btn" id="sewPrintBtn" type="button">Nyomtatás</button>
+      </div>
+      <p class="hint">Az 1:1 SVG valós méretű: nyomtasd 100%-os méretarányban (plotter, vagy több A4-es lapra), és ellenőrizd a 10×10 cm-es négyzettel.</p>
+    </aside>
+    <section class="sew-main">
+      <div class="sew-sheet" id="sewSheet"></div>
+      <div class="sew-lists">
+        <div class="card"><h3>Darabjegyzék</h3><table class="cut-table"><thead><tr><th>Darab</th><th>Szabás</th><th>Anyag</th><th>Megjegyzés</th></tr></thead><tbody id="cutList"></tbody></table></div>
+        <div class="card"><h3>Anyagszükséglet és díszítés</h3><ul class="need-list" id="needList"></ul>
+          <p class="hint">Közelítő szabásminta, varrásráhagyás nélkül. Mielőtt a drága anyagot felvágod, varrj egy próbadarabot olcsó anyagból, és igazítsd a táncosra.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= MOTÍVUMRAJZOLÓ ================= -->
+  <div class="modal" id="motifModal" hidden>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="motifModalTitle">
+      <header><h2 id="motifModalTitle">Saját motívum rajzolása</h2><button class="icon-btn" id="mmClose" type="button" aria-label="Bezárás">✕</button></header>
+      <div class="mm-body">
+        <div class="mm-canvas-wrap"><canvas id="mmCanvas" width="400" height="400"></canvas></div>
+        <div class="mm-tools">
+          <label>Szimmetria <select id="mmSym">
+            <option value="1">Nincs</option><option value="m">Tükrös (bal–jobb)</option>
+            <option value="4">4-es forgás</option><option value="6" selected>6-os kaleidoszkóp</option><option value="8">8-as kaleidoszkóp</option>
+          </select></label>
+          <div class="color-row">
+            <label><input type="color" id="mmColor" value="#b5179e"><span>Szín</span></label>
+            <label class="range">Vastagság <input type="range" id="mmSize" min="2" max="40" value="8"></label>
+          </div>
+          <div class="btn-row">
+            <button class="btn small" id="mmPen" type="button">Toll</button>
+            <button class="btn small" id="mmUndo" type="button">Visszavonás</button>
+            <button class="btn small" id="mmClear" type="button">Törlés</button>
+          </div>
+          <label>Kiindulás alapalakzatból</label>
+          <div class="motif-lib small" id="mmStamps"></div>
+          <p class="hint">Kattints egy alakzatra: kitöltve a vászonra kerül, utána rajzolhatsz rá. A szimmetria a rajzolásra vonatkozik.</p>
+          <label>Név <input type="text" id="mmName" maxlength="30" placeholder="pl. Tűzvirág"></label>
+          <div class="btn-row">
+            <button class="btn primary" id="mmSave" type="button">Mentés motívumként</button>
+            <button class="btn" id="mmAsPattern" type="button">Ismétlődő mintának</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="js/data.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/patterns.js"></script>
+  <script src="js/motifs.js"></script>
   <script src="js/render.js"></script>
+  <script src="js/sewing.js"></script>
+  <script src="js/imagetools.js"></script>
   <script src="js/advisor.js"></script>
   <script src="js/app.js"></script>
 </body>

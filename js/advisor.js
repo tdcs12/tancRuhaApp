@@ -114,6 +114,15 @@ TR.advisor = (() => {
       d.top.fill.rotation = d.bottom.fill.rotation = pick([0, 0, 0, 45, 90, 30]);
       d.accent.fill.pattern = pick(['egyszinu', 'egyszinu', 'ombre', p1]);
     }
+    if (!locks.form) {
+      const keepCustom = (d.motifs || []).filter(m => m.type.startsWith('custom:'));
+      d.motifs = keepCustom;
+      if (st.motifs || r() < 0.3) {
+        const kinds = st.motifs ? ['nyak', 'koszoru', 'szort', 'ivek'].filter(() => r() < 0.6) : [pick(['nyak', 'ivek', 'szort'])];
+        if (st.motifs && !kinds.length) kinds.push('nyak');
+        kinds.forEach(k => motifPreset(k, d).forEach(m => d.motifs.push(m)));
+      }
+    }
     const name = pick(md.adj) + ' ' + pick(D.nouns);
     d.name = name;
     const bottomPhrase = D.phrases.bottom[d.bottom.type] || '';
@@ -125,6 +134,20 @@ TR.advisor = (() => {
       palette: d.top.fill.colors
     };
     return { design: d, concept };
+  }
+
+  /* ---- Gyors motívum-díszítések ---- */
+  function motifPreset(kind, design) {
+    const M = TR.motifs, acc = design.accent.fill.colors;
+    const mk = (type, props) => Object.assign(M.newMotif(type, 200, 150), props);
+    const hasBottom = D.bottoms[design.bottom.type].kind !== 'none';
+    switch (kind) {
+      case 'nyak': return [mk('strassz', { y: 124, repeat: 'iv', count: 15, gap: 1.35, size: 7, color: '#eaf4ff' })];
+      case 'koszoru': return [mk('kristaly', { y: 205, repeat: 'kor', count: 10, gap: 1.1, size: 14, color: acc[0], color2: '#ffffff' })];
+      case 'szort': return [mk('szikra', { y: hasBottom ? 400 : 220, target: hasBottom ? 'bottom' : 'top', repeat: 'szort', count: 22, gap: 2.4, size: 10, color: '#ffffff', outline: false, opacity: 0.9 })];
+      case 'ivek': return [mk('iv', { x: 172, y: 210, rot: -25, size: 70, color: acc[0], color2: acc[1], mirror: true })];
+      default: return [];
+    }
   }
 
   /* ---- Anyagjavaslat a tervlaphoz ---- */
@@ -159,5 +182,5 @@ TR.advisor = (() => {
     return list;
   }
 
-  return { analyze, inspire, fabricAdvice };
+  return { analyze, inspire, fabricAdvice, motifPreset };
 })();
